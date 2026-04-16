@@ -1,0 +1,42 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# Archives
+*.zip
+*.tar
+*.gz
+
+# Local secrets and scratch files
+.env
+.env.*
+secrets/
+private/
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+*.token
+
+# AWS CLI temporary files
+.aws-sam/
+
+# Generated outputs you may or may not want tracked
+*.log
+*.tmp
