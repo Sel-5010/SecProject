@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-set -euo pipefail
 
 # =========================================================
 # Lesson 2 - Broken Authentication
