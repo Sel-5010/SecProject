@@ -22,20 +22,8 @@ Document, exploit, fix, and verify the 10 official DVSA vulnerabilities in a cle
 - `evidence/` - screenshots, logs, request output, and proof per lesson
 - `patches/` - code diffs, policy files, and fixed versions
 - `scripts/` - helper scripts for reproduction and verification
-- `templates/` - markdown templates for report sections and evidence tracking
-- `docs/` - extra notes, architecture diagrams, or planning docs
+- `docs/` - planning docs
 
-## Suggested Naming
-Use consistent filenames so grading is easy.
-
-Examples:
-- `evidence/lesson-01/01-api-stage-url.png`
-- `evidence/lesson-01/02-rce-request.txt`
-- `evidence/lesson-01/03-cloudwatch-proof.png`
-- `patches/lesson-02-order-manager-before.js`
-- `patches/lesson-02-order-manager-after.js`
-- `patches/lesson-07-iam-policy-before.json`
-- `patches/lesson-07-iam-policy-after.json`
 
 ## Lessons
 1. Event Injection
@@ -48,9 +36,3 @@ Examples:
 8. Logic Vulnerabilities
 9. Vulnerable Dependencies
 10. Unhandled Exceptions
-
-## Before You Push
-- Remove real AWS keys, session tokens, JWTs, passwords, and emails.
-- Redact account IDs if your instructor expects that.
-- Keep only screenshots and logs that support your findings.
-- Make sure every lesson has exploit proof, fix proof, and post-fix verification.
