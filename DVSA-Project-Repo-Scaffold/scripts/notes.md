@@ -29,7 +29,7 @@ After the fix:
 - the `FILE READ SUCCESS` log entry no longer appears
 - normal order-related DVSA behavior still works
 
-## Lesson 2 - Broken Authentication
+# Lesson 2 - Broken Authentication
 
 ### Purpose
 Demonstrate that DVSA trusts JWT payload claims such as `username` and `sub` without properly verifying the JWT signature, allowing User B to impersonate User C and access User C’s order data. After the fix, forged tokens should be rejected while valid tokens should still work normally.
@@ -60,3 +60,27 @@ Demonstrate that DVSA trusts JWT payload claims such as `username` and `sub` wit
 export API="https://<api-id>.execute-api.us-east-1.amazonaws.com/dvsa/order"
 export TOKEN_B="<User B JWT>"
 export TOKEN_C="<User C JWT>"
+```
+
+# Lesson 7 - Over-Privileged Function
+
+## Vulnerability
+The Lambda function DVSA-SEND-RECEIPT-EMAIL used an execution role with permissions broader than required for sending receipt emails.
+
+## Root Cause
+The execution role had excessive IAM permissions. It allowed broad S3 access, broad DynamoDB access, and full SES access. Any code running inside the Lambda function would inherit these permissions.
+
+## Evidence Collected
+- The role had AmazonSESFullAccess with ses:* on all resources.
+- The role had S3 wildcard permissions on arn:aws:s3:::* and arn:aws:s3:::*/*.
+- The role had DynamoDB wildcard permissions on all tables and indexes.
+- IAM Policy Simulator showed unrelated S3 access was allowed before remediation.
+- CloudWatch Logs confirmed the receipt Lambda function was invoked.
+- After remediation, IAM Policy Simulator showed unrelated S3 and DynamoDB actions were denied.
+- CloudWatch Logs confirmed the receipt Lambda still ran after the fix.
+
+## Fix
+Removed broad SES, S3, and DynamoDB permissions. Added a least-privilege policy named DVSA-SendReceipt-LeastPrivilege.
+
+## Verification
+After the fix, unrelated S3 and DynamoDB actions were denied in IAM Policy Simulator, while the normal receipt workflow still triggered the Lambda function successfully.
