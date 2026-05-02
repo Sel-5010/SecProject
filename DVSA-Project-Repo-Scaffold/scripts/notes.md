@@ -1,3 +1,34 @@
+# Lessons 1 and 9 Notes
+
+## Shared exploit path
+Both lessons use the same `/order` exploit path in DVSA.
+
+## Lesson 1 focus
+Event Injection:
+- proves attacker-controlled input executed in the backend
+- main proof is the CloudWatch log entry:
+  `FILE READ SUCCESS: You are reading the contents of my hacked file!`
+
+## Lesson 9 focus
+Vulnerable Dependencies:
+- proves the exploit was possible because the backend used an unsafe third-party dependency
+- main dependency evidence is the use of `node-serialize` on attacker-controlled request data
+
+## Shared fix
+The root fix is in:
+- `patches/lesson1&9.fix`
+
+The fix:
+- removes unsafe deserialization
+- stops using the unsafe dependency in the request path
+- parses request data as normal JSON only
+
+## Shared post-fix proof
+After the fix:
+- the same exploit payload no longer causes backend execution
+- the `FILE READ SUCCESS` log entry no longer appears
+- normal order-related DVSA behavior still works
+
 ## Lesson 2 - Broken Authentication
 
 ### Purpose
