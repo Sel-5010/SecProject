@@ -22,7 +22,6 @@ Document, exploit, fix, and verify the 10 official DVSA vulnerabilities in a cle
 - `evidence/` - screenshots, logs, request output, and proof per lesson
 - `patches/` - code diffs, policy files, and fixed versions
 - `scripts/` - helper scripts for reproduction and verification
-- `docs/` - planning docs
 
 
 ## Lessons
