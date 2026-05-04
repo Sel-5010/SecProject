@@ -1,0 +1,178 @@
+Lesson 10 - Unhandled Exceptions Fix
+====================================
+
+Vulnerability:
+--------------
+The DVSA /order API returned raw backend Lambda exception details to the client when malformed requests were sent.
+
+Tested malformed request:
+
+{
+  "action": "get"
+}
+
+This request is missing the required order-id field.
+
+Before the fix, the client response could expose internal backend details such as:
+
+- stackTrace
+- errorType
+- errorMessage
+- /var/task/
+- internal Lambda file paths
+- source-code line references
+
+Affected component:
+-------------------
+DVSA-ORDER-MANAGER/order-manager.js
+
+Root cause:
+-----------
+The order manager allowed malformed requests to reach downstream Lambda functions and returned downstream Lambda error payloads directly to the client.
+
+Detailed diagnostic errors should stay in CloudWatch Logs only. They should not be returned to the API client.
+
+Fix strategy:
+-------------
+1. Validate required fields before invoking downstream Lambda functions.
+2. Catch downstream Lambda FunctionError responses.
+3. Detect unsafe error fields such as stackTrace, errorType, and errorMessage.
+4. Log detailed error information only to CloudWatch.
+5. Return a generic client-safe error message.
+
+Main code added:
+----------------
+
+function response(statusCode, bodyObj) {
+  return {
+    statusCode: statusCode,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(bodyObj)
+  };
+}
+
+function safeError(statusCode, msg) {
+  return response(statusCode, {
+    status: "err",
+    msg: msg
+  });
+}
+
+Input validation added for get action:
+--------------------------------------
+
+case "get":
+  if (!req["order-id"]) {
+    return { error: "missing order-id" };
+  }
+
+  return {
+    functionName: "DVSA-ORDER-GET",
+    payload: {
+      user: user,
+      orderId: req["order-id"],
+      isAdmin: isAdmin
+    }
+  };
+
+Downstream Lambda error sanitization added:
+-------------------------------------------
+
+if (lambdaResponse.FunctionError) {
+  console.log("Downstream Lambda FunctionError:", {
+    functionName: functionName,
+    payload: rawPayload
+  });
+
+  return safeError(400, "invalid request");
+}
+
+Unsafe backend error payload detection added:
+---------------------------------------------
+
+if (
+  data &&
+  (
+    data.stackTrace ||
+    data.errorType ||
+    data.errorMessage ||
+    data.traceback ||
+    data.exception
+  )
+) {
+  console.log("Sanitized downstream exception:", {
+    functionName: functionName,
+    errorPayload: data
+  });
+
+  return safeError(400, "invalid request");
+}
+
+Final catch-all handler added:
+------------------------------
+
+exports.handler = async (event) => {
+  try {
+    /*
+      Normal order-manager logic here.
+      Parse request, identify action, invoke downstream Lambda.
+    */
+  } catch (e) {
+    console.log("Unhandled order-manager error:", e);
+    return safeError(500, "internal server error");
+  }
+};
+
+Expected secure result after fix:
+---------------------------------
+
+When the malformed request is repeated:
+
+{
+  "action": "get"
+}
+
+The API should return a safe response similar to:
+
+{
+  "status": "err",
+  "msg": "invalid request"
+}
+
+The response must NOT contain:
+
+- stackTrace
+- errorType
+- errorMessage
+- /var/task/
+- internal file paths
+- source-code lines
+
+Evidence:
+---------
+Before-fix screenshot:
+evidence/lesson-10/lesson10_01_malformed_request_leak.png
+
+CloudWatch screenshot:
+evidence/lesson-10/lesson10_02_cloudwatch_exception.png
+
+Fix code screenshot:
+evidence/lesson-10/lesson10_03_fix_code.png
+
+After-fix verification screenshot:
+evidence/lesson-10/lesson10_04_post_fix_safe_error.png
+
+Scripts:
+--------
+Reproduce:
+scripts/lesson-10-reproduce.sh
+
+Verify:
+scripts/lesson-10-verify.sh
+
+Security note:
+--------------
+No real AWS credentials, JWT tokens, passwords, or session secrets should be committed to the repository.
