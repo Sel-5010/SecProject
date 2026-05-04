@@ -294,6 +294,39 @@ Patch saved in:
 patches/patches/lesson-05-iam-deny-admin-update.json
 ```
 
+# Lesson 6: Denial of Service Fix Notes
+
+## Vulnerability
+
+The DVSA billing workflow became unreliable during controlled concurrent billing requests. The test sent 12 parallel billing requests using `lesson6_dos_controlled.py`.
+
+## Observed Evidence
+
+In this deployment, the official 429 / TooManyRequestsException response was not observed. Instead, the billing path returned repeated 500/502 responses during the concurrent test.
+
+This was treated as degraded availability because the billing workflow became unstable under parallel request pressure.
+
+## Fix Applied
+
+API Gateway throttling was configured on the deployed DVSA API stage.
+
+Configuration used:
+
+- Rate limit: 2 requests/second
+- Burst limit: 3 requests
+- Location: API Gateway -> DVSA API -> Stages -> active stage -> throttling / method settings
+
+## Security Purpose
+
+The throttling configuration limits repeated requests at the API layer before they can consume backend Lambda billing capacity.
+
+## Verification
+
+After applying throttling, the same concurrent request pattern should be limited at API Gateway. A normal single billing request should still be able to reach the billing workflow.
+
+## Important Note
+
+Secrets were not stored in this repository. API endpoint, authorization token, and order ID must be supplied using environment variables.
 
 # Lesson 7 - Over-Privileged Function
 
