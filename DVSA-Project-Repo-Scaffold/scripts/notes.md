@@ -350,3 +350,43 @@ Removed broad SES, S3, and DynamoDB permissions. Added a least-privilege policy 
 
 ## Verification
 After the fix, unrelated S3 and DynamoDB actions were denied in IAM Policy Simulator, while the normal receipt workflow still triggered the Lambda function successfully.
+
+
+# Lesson 10 - Unhandled Exceptions
+
+## Purpose
+
+Demonstrate that DVSA returns internal backend exception details when a malformed request is sent to the `/order` API. The vulnerable behavior exposes information such as `stackTrace`, `errorType`, `errorMessage`, internal Lambda file paths, and source-code lines. After the fix, malformed requests should return only a safe generic error message while detailed errors remain in CloudWatch.
+
+## Environment
+
+- API endpoint: `/order`
+- Main Lambda function:
+  - `DVSA-ORDER-MANAGER`
+- Downstream function tested:
+  - `DVSA-ORDER-GET`
+- AWS service used for proof:
+  - CloudWatch Logs
+- Tools:
+  - Browser DevTools
+  - curl
+  - jq
+  - AWS Console
+
+## Reproduction summary
+
+1. Capture a valid authorization token from Browser DevTools while logged in to DVSA.
+2. Send a malformed request to the `/order` API using action `get` without the required `order-id`.
+3. Observe that the client receives internal backend exception details.
+4. Open CloudWatch Logs and confirm the backend exception occurred inside the Lambda function.
+5. Apply the fix in `DVSA-ORDER-MANAGER/order-manager.js`.
+6. Repeat the same malformed request.
+7. Confirm that the response no longer exposes stack traces, internal file paths, error types, or source-code lines.
+
+## Vulnerable request
+
+```json
+{
+  "action": "get"
+}
+```
