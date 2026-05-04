@@ -155,6 +155,88 @@ Sensitive receipt data should only be exposed through authorized receipt or admi
 In serverless applications, IAM permissions are part of the security boundary.  
 Even if one Lambda is abused, it should not be able to invoke privileged admin functions unless that access is strictly required.
 
+# Lesson 5 - Broken Access Control
+
+## Purpose
+
+Demonstrate that DVSA allows a normal user to abuse the public `/order` API path to indirectly invoke the privileged `DVSA-ADMIN-UPDATE-ORDERS` Lambda function. This allows the user to update an order state without completing the normal billing workflow.
+
+After the fix, the same exploit should no longer update the order, while normal billing should still work.
+
+## Environment
+
+- API endpoint: `/order`
+- Public Lambda function: `DVSA-ORDER-MANAGER`
+- Privileged Lambda function: `DVSA-ADMIN-UPDATE-ORDERS`
+- User used: normal non-admin DVSA user
+- Tools:
+  - Browser DevTools
+  - curl
+  - python3
+  - jq
+  - AWS Console
+  - IAM
+
+## Reproduction summary
+
+1. Logged in to DVSA as a normal user.
+2. Captured the `/order` API URL and authorization token using browser DevTools.
+3. Created a new order.
+4. Added shipping details.
+5. Did not complete billing.
+6. Generated an injected payload that invoked `DVSA-ADMIN-UPDATE-ORDERS`.
+7. Sent the payload to the public `/order` endpoint.
+8. Refreshed the DVSA orders page.
+9. Confirmed that the target order changed to `processed` even though normal billing was not completed.
+
+## Evidence
+
+Minimum screenshots used:
+
+1. `01-devtools-api-token.png`  
+   Shows the `/order` API request and authorization header.
+
+2. `02-before-exploit-unpaid.png`  
+   Shows the order before exploit, after shipping but before billing.
+
+3. `03-exploit-terminal.png`  
+   Shows the exploit request being sent.
+
+4. `04-after-exploit-paid.png`  
+   Shows the attacked order changed to `processed`.
+
+5. `05-iam-fix-policy.png`  
+   Shows the IAM deny policy added to the `DVSA-ORDER-MANAGER` execution role.
+
+6. `06-postfix-verification.png`  
+   Shows that after the fix the exploit no longer changes a new order, and normal billing still works.
+
+## Root cause
+
+The root cause is missing access control between public and privileged backend functions. The public order manager path should not be able to trigger administrative order updates. Because the public function can invoke the admin update function, an attacker who reaches code execution in the public function can perform a privileged order-state transition.
+
+## Fix applied
+
+An inline IAM deny policy was added to the execution role of `DVSA-ORDER-MANAGER`.
+
+The policy denies:
+
+- `lambda:InvokeFunction`
+
+against:
+
+- `DVSA-ADMIN-UPDATE-ORDERS`
+
+This prevents the public order manager function from invoking the privileged admin update function.
+
+## Patch file
+
+Patch saved in:
+
+```text
+```
+patches/patches/lesson-05-iam-deny-admin-update.json
+
 # Lesson 7 - Over-Privileged Function
 
 ## Vulnerability
